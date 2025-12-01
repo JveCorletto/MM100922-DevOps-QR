@@ -1,6 +1,13 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/page": "app/page.js",
+  "/surveys/page": "app/surveys/page.js",
+  "/analytics/page": "app/analytics/page.js",
   "/auth/login/page": "app/auth/login/page.js",
-  "/surveys/page": "app/surveys/page.js"
+  "/profile/page": "app/profile/page.js",
+  "/s/[slug]/page": "app/s/[slug]/page.js",
+  "/api/public/s/[slug]/route": "app/api/public/s/[slug]/route.js",
+  "/api/public/s/[slug]/my-status/route": "app/api/public/s/[slug]/my-status/route.js",
+  "/page": "app/page.js",
+  "/surveys/[id]/analytics/page": "app/surveys/[id]/analytics/page.js",
+  "/api/surveys/[id]/analytics/route": "app/api/surveys/[id]/analytics/route.js"
 }

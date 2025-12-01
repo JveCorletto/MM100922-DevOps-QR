@@ -3,6 +3,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import NavBar from "@/components/NavBar";
 import { Toaster } from "react-hot-toast";
+import SessionInitializer from "@/components/SessionInitializer";
 
 export const metadata: Metadata = {
   title: "Sistema de Encuestas con QR",
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es">
       <body>
+        <SessionInitializer />
         <NavBar />
         {children}
         <Toaster
