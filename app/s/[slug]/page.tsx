@@ -1,3 +1,4 @@
+// page.tsx
 import PublicSurvey from "./public-client";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { notFound } from "next/navigation";

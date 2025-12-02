@@ -9,11 +9,6 @@ import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrows
 
 export default function NavBar() {
   const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
-  const router = useRouter();
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const { user, loading } = useSession();
-
   useEffect(() => {
     const client = supabaseBrowser();
     setSupabase(client);
@@ -23,6 +18,10 @@ export default function NavBar() {
     return null;
   }
 
+  const router = useRouter();
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const { user, loading } = useSession();
 
   const logout = async () => {
     try {

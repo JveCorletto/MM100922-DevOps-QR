@@ -1,16 +1,26 @@
-"use client";
+'use client';
 
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useSurveyAnalytics } from "@/hooks/useSurveyAnalytics";
-import { StatsCards } from "@/components/analytics/StatsCards";
-import { QuestionAnalytics } from "@/components/analytics/QuestionAnalytics";
-import { ResponseTrendChart } from "@/components/analytics/charts/ResponseTrendChart";
-import { DeviceStats } from "@/components/analytics/DeviceStats";
-import { ExportButton } from "@/components/analytics/ExportButton";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useSurveyAnalytics } from '@/hooks/useSurveyAnalytics';
+import { StatsCards } from '@/components/analytics/StatsCards';
+import { QuestionAnalytics } from '@/components/analytics/QuestionAnalytics';
+import { ResponseTrendChart } from '@/components/analytics/charts/ResponseTrendChart';
+import { DeviceStats } from '@/components/analytics/DeviceStats';
+import { ExportButton } from '@/components/analytics/ExportButton';
+import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 export default function SurveyAnalyticsPage() {
+  const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+  useEffect(() => {
+    const client = supabaseBrowser();
+    setSupabase(client);
+  }, []);
+
+  if (!supabase) {
+    return null;
+  }
+  
   const { id } = useParams();
   const router = useRouter();
   const { data, loading, error, refetch } = useSurveyAnalytics(id as string);
@@ -18,21 +28,17 @@ export default function SurveyAnalyticsPage() {
 
   // Verificar autenticación en cliente
   useEffect(() => {
-    const supabase = supabaseBrowser();
-    if (!supabase) return;
-
     const checkAuth = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
+      const supabase = supabaseBrowser();
+      const { data: { session } } = await supabase.auth.getSession();
+      
       if (!session) {
-        router.push("/auth/login");
+        router.push('/auth/login');
       } else {
         setHasCheckedAuth(true);
       }
     };
-
+    
     checkAuth();
   }, [router]);
 

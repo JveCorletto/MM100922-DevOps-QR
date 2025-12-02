@@ -1,3 +1,4 @@
+// app/s/[slug]/thanks/page.tsx
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseServer } from "@/lib/supabaseServer";

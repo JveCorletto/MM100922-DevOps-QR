@@ -11,16 +11,6 @@ type Profile = {
 };
 
 export default function ProfilePage() {
-  const [email, setEmail] = useState<string>("");
-  const [profile, setProfile] = useState<Profile>({
-    display_name: "",
-    phone: "",
-    genero: "",
-    fecha_nacimiento: "",
-  });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
   const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
   useEffect(() => {
     const client = supabaseBrowser();
@@ -30,6 +20,16 @@ export default function ProfilePage() {
   if (!supabase) {
     return null;
   }
+  
+  const [email, setEmail] = useState<string>("");
+  const [profile, setProfile] = useState<Profile>({
+    display_name: "",
+    phone: "",
+    genero: "",
+    fecha_nacimiento: "",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     (async () => {
