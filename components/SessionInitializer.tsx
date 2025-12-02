@@ -41,5 +41,5 @@ export default function SessionInitializer() {
     };
   }, [supabase]);
 
-  return null;
+  return null; // Este componente no renderiza nada
 }
