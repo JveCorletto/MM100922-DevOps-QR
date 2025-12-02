@@ -1,4 +1,3 @@
-// /app/api/surveys/[id]/analytics/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 

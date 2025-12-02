@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 
-export async function GET(
-  _req: Request,
-  { params }: { params: { slug: string } }
-) {
+export async function GET(_req: Request, { params }: { params: { slug: string } } ) {
   const supabase = supabaseServer();
 
   // Encuesta por slug y solo si está publicada

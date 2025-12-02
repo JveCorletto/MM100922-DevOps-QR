@@ -1,73 +1,76 @@
-'use client'
+"use client";
 
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 interface Survey {
-  id: string
-  title: string
-  slug: string
-  status: 'draft' | 'published' | 'closed'
-  created_at: string
-  updated_at: string
-  responses?: { count: number }[]
+  id: string;
+  title: string;
+  slug: string;
+  status: "draft" | "published" | "closed";
+  created_at: string;
+  updated_at: string;
+  responses?: { count: number }[];
 }
 
 export default function AnalyticsPage() {
-  const [surveys, setSurveys] = useState<Survey[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
-  const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+  const [surveys, setSurveys] = useState<Survey[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  // ✅ ÚNICO hook de efecto, siempre se ejecuta en el mismo orden
   useEffect(() => {
-    const client = supabaseBrowser();
-    setSupabase(client);
+    loadAnalytics();
   }, []);
-
-  if (!supabase) {
-    return null;
-  }
-
-  useEffect(() => {
-    loadAnalytics()
-  }, [])
 
   async function loadAnalytics() {
     try {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
+
+      const supabase = supabaseBrowser();
+      if (!supabase) {
+        // SSR / build, no hacemos nada
+        setLoading(false);
+        return;
+      }
 
       // Obtener sesión
-      const { data: { session }, error: authError } = await supabase.auth.getSession()
+      const {
+        data: { session },
+        error: authError,
+      } = await supabase.auth.getSession();
 
       if (authError) {
-        console.error('Error de autenticación:', authError)
-        throw new Error('Error de autenticación')
+        console.error("Error de autenticación:", authError);
+        throw new Error("Error de autenticación");
       }
 
       if (!session) {
-        router.push('/auth/login')
-        return
+        router.push("/auth/login");
+        return;
       }
 
-      // Primero obtener el perfil del usuario (profiles.id)
+      // Obtener perfil del usuario
       const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', session.user.id) // ← CAMBIAR A 'id', no 'user_id'
-        .single()
+        .from("profiles")
+        .select("id")
+        .eq("id", session.user.id)
+        .single();
 
       if (profileError || !profile) {
-        console.error('Error obteniendo perfil:', profileError)
-        throw new Error('Perfil de usuario no encontrado')
+        console.error("Error obteniendo perfil:", profileError);
+        throw new Error("Perfil de usuario no encontrado");
       }
 
-      // Ahora obtener encuestas usando owner_id que referencia profiles.id
+      // Obtener encuestas del owner
       const { data: surveysData, error: surveysError } = await supabase
-        .from('surveys')
-        .select(`
+        .from("surveys")
+        .select(
+          `
           id,
           title,
           slug,
@@ -75,30 +78,31 @@ export default function AnalyticsPage() {
           created_at,
           updated_at,
           responses:responses(count)
-        `)
-        .eq('owner_id', profile.id) // ← CORRECCIÓN: usar owner_id, no user_id
-        .order('created_at', { ascending: false })
+        `
+        )
+        .eq("owner_id", profile.id)
+        .order("created_at", { ascending: false });
 
       if (surveysError) {
-        console.error('Error cargando encuestas:', surveysError)
-        throw surveysError
+        console.error("Error cargando encuestas:", surveysError);
+        throw surveysError;
       }
 
-      setSurveys(surveysData || [])
+      setSurveys(surveysData || []);
     } catch (err: any) {
-      console.error('Error cargando analíticas:', err)
-      setError(err.message || 'Error al cargar los datos')
+      console.error("Error cargando analíticas:", err);
+      setError(err.message || "Error al cargar los datos");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
-  // Calcular estadísticas
-  const totalSurveys = surveys.length
+  // Stats
+  const totalSurveys = surveys.length;
   const totalResponses = surveys.reduce((sum, survey) => {
-    return sum + (survey.responses?.[0]?.count || 0)
-  }, 0)
-  const publishedSurveys = surveys.filter(s => s.status === 'published').length
+    return sum + (survey.responses?.[0]?.count || 0);
+  }, 0);
+  const publishedSurveys = surveys.filter((s) => s.status === "published").length;
 
   if (loading) {
     return (
@@ -108,7 +112,7 @@ export default function AnalyticsPage() {
           <p className="text-gray-600">Cargando analíticas...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -116,8 +120,18 @@ export default function AnalyticsPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full text-center">
           <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-            <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.698-.833-2.464 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            <svg
+              className="h-6 w-6 text-red-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.698-.833-2.464 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+              />
             </svg>
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">Error</h3>
@@ -130,7 +144,7 @@ export default function AnalyticsPage() {
               Reintentar
             </button>
             <button
-              onClick={() => router.push('/surveys')}
+              onClick={() => router.push("/surveys")}
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
             >
               Ir a Encuestas
@@ -138,7 +152,7 @@ export default function AnalyticsPage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -245,10 +259,10 @@ export default function AnalyticsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${survey.status === 'published'
-                            ? 'bg-green-100 text-green-800'
-                            : survey.status === 'draft'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
+                          ? 'bg-green-100 text-green-800'
+                          : survey.status === 'draft'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
                           }`}>
                           {survey.status === 'published' ? 'Publicada' :
                             survey.status === 'draft' ? 'Borrador' :

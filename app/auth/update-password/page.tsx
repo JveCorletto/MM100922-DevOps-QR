@@ -4,8 +4,11 @@ import { useEffect, useState } from 'react';
 import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 export default function UpdatePasswordPage() {
+  const [pw1, setPw1] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [loading, setLoading] = useState(false);
   const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
-  
+
   useEffect(() => {
     const client = supabaseBrowser();
     setSupabase(client);
@@ -14,10 +17,6 @@ export default function UpdatePasswordPage() {
   if (!supabase) {
     return null;
   }
-
-  const [pw1, setPw1] = useState("");
-  const [pw2, setPw2] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

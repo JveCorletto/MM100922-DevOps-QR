@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 
-/**
- * Tabla survey_questions:
- *  id, survey_id, type, question_text, required, options jsonb, order_index
- */
-
 export async function PUT(req: Request, { params }: { params: { id: string; qid: string } }) {
   const supabase = supabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
