@@ -1,0 +1,227 @@
+'use client';
+
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useSurveyAnalytics } from '@/hooks/useSurveyAnalytics';
+import { StatsCards } from '@/components/analytics/StatsCards';
+import { QuestionAnalytics } from '@/components/analytics/QuestionAnalytics';
+import { ResponseTrendChart } from '@/components/analytics/charts/ResponseTrendChart';
+import { DeviceStats } from '@/components/analytics/DeviceStats';
+import { ExportButton } from '@/components/analytics/ExportButton';
+import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
+
+export default function SurveyAnalyticsPage() {
+  const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+  useEffect(() => {
+    const client = supabaseBrowser();
+    setSupabase(client);
+  }, []);
+
+  if (!supabase) {
+    return null;
+  }
+  
+  const { id } = useParams();
+  const router = useRouter();
+  const { data, loading, error, refetch } = useSurveyAnalytics(id as string);
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
+
+  // Verificar autenticación en cliente
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = supabaseBrowser();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        router.push('/auth/login');
+      } else {
+        setHasCheckedAuth(true);
+      }
+    };
+    
+    checkAuth();
+  }, [router]);
+
+  if (loading || !hasCheckedAuth) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
+            ))}
+          </div>
+          <div className="h-64 bg-gray-200 rounded-lg mb-6"></div>
+          <div className="h-96 bg-gray-200 rounded-lg"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+            <div className="flex items-center mb-4">
+              <div className="text-red-600 text-2xl mr-3">⚠️</div>
+              <h2 className="text-xl font-bold text-red-800">Error al cargar analítica</h2>
+            </div>
+            <p className="text-red-700 mb-4">{error}</p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => refetch()}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Reintentar
+              </button>
+              <button
+                onClick={() => router.push('/surveys')}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Volver a encuestas
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Solo renderizar cuando data existe
+  if (!data) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="text-5xl mb-4">📊</div>
+          <h2 className="text-2xl font-bold mb-4">Sin datos disponibles</h2>
+          <p className="text-gray-600 mb-6">
+            Esta encuesta aún no tiene respuestas. Comparte el enlace para comenzar a recibir respuestas.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Data existe, podemos acceder a sus propiedades
+  const { survey, summary, questions } = data;
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {survey.title}
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Analítica de respuestas • {summary.total_responses} respuestas
+          </p>
+          {survey.description && (
+            <p className="text-gray-500 mt-1">{survey.description}</p>
+          )}
+        </div>
+        <div className="mt-4 md:mt-0 flex space-x-3">
+          <button
+            onClick={() => router.push(`/surveys/${id}/edit`)}
+            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+          >
+            Editar Encuesta
+          </button>
+          <ExportButton surveyId={id as string} />
+        </div>
+      </div>
+
+      {/* Tarjetas de estadísticas */}
+      <StatsCards summary={summary} />
+
+      {/* Gráfico de tendencia */}
+      {summary.response_trend && summary.response_trend.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <h2 className="text-xl font-bold mb-4">Tendencia de respuestas (últimos 7 días)</h2>
+          <ResponseTrendChart data={summary.response_trend} />
+        </div>
+      )}
+
+      {/* Estadísticas de dispositivo */}
+      {summary.device_stats && (
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <DeviceStats stats={summary.device_stats} />
+        </div>
+      )}
+
+      {/* Analítica por pregunta */}
+      <div className="space-y-8">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900">Analítica por pregunta</h2>
+          <div className="text-sm text-gray-600">
+            {questions.filter((q: any) => q.response_count > 0).length} de {questions.length} preguntas tienen respuestas
+          </div>
+        </div>
+        
+        {questions.length === 0 ? (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+            <p className="text-yellow-800">Esta encuesta no tiene preguntas configuradas.</p>
+          </div>
+        ) : (
+          questions
+            .filter((q: any) => q.response_count > 0)
+            .map((question: any, index: number) => (
+              <QuestionAnalytics
+                key={question.id}
+                question={question}
+                index={index + 1}
+              />
+            ))
+        )}
+
+        {/* Preguntas sin respuestas */}
+        {questions.filter((q: any) => q.response_count === 0).length > 0 && (
+          <div className="bg-gray-50 rounded-lg p-6">
+            <h3 className="text-lg font-semibold mb-3">Preguntas sin respuestas</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {questions
+                .filter((q: any) => q.response_count === 0)
+                .map((question: any) => (
+                  <div key={question.id} className="bg-white p-3 rounded border">
+                    <p className="font-medium">{question.question_text}</p>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <span className="text-xs px-2 py-1 bg-gray-100 rounded">
+                        {question.type === 'single' ? 'Opción única' :
+                         question.type === 'multiple' ? 'Opción múltiple' :
+                         question.type === 'likert' ? 'Escala Likert' : 'Texto libre'}
+                      </span>
+                      {question.required && (
+                        <span className="text-xs px-2 py-1 bg-red-100 text-red-800 rounded">
+                          Obligatoria
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer con información adicional */}
+      <div className="mt-12 pt-8 border-t border-gray-200">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center text-sm text-gray-600">
+          <div>
+            <p>Datos actualizados al: {new Date().toLocaleString()}</p>
+            <p>ID de la encuesta: <code className="bg-gray-100 px-1 rounded">{survey.id}</code></p>
+          </div>
+          <div className="mt-4 md:mt-0">
+            <button
+              onClick={() => refetch()}
+              className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+            >
+              Actualizar datos
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
