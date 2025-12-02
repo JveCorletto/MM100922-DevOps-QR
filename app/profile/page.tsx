@@ -12,15 +12,6 @@ type Profile = {
 
 export default function ProfilePage() {
   const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
-  useEffect(() => {
-    const client = supabaseBrowser();
-    setSupabase(client);
-  }, []);
-
-  if (!supabase) {
-    return null;
-  }
-  
   const [email, setEmail] = useState<string>("");
   const [profile, setProfile] = useState<Profile>({
     display_name: "",
@@ -30,6 +21,16 @@ export default function ProfilePage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const client = supabaseBrowser();
+    setSupabase(client);
+  }, []);
+
+  // Ahora sí podemos hacer la verificación DESPUÉS de todos los hooks
+  if (!supabase) {
+    return null;
+  }
 
   useEffect(() => {
     (async () => {

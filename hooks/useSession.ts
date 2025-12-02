@@ -22,13 +22,14 @@ export function useSession(): UseSessionResult {
   useEffect(() => {
     const client: SupabaseBrowserClient | null = supabaseBrowser();
 
-    // Si estamos en SSR/build, no hay cliente → dejamos loading en false
+    // Si estamos en SSR/build, no hay cliente
     if (!client) {
       setLoading(false);
-      return;
+      return () => {}; // ← RETORNAR UNA FUNCIÓN DE CLEANUP VACÍA
     }
 
     let isMounted = true;
+    let subscription: { unsubscribe: () => void } | null = null;
 
     async function fetchInitialUser() {
       const {
@@ -76,7 +77,7 @@ export function useSession(): UseSessionResult {
     fetchInitialUser();
 
     const {
-      data: { subscription },
+      data: { subscription: authSubscription },
     } = client.auth.onAuthStateChange(
       (_event: AuthChangeEvent, session: Session | null) => {
         if (!isMounted) return;
@@ -105,10 +106,13 @@ export function useSession(): UseSessionResult {
       }
     );
 
+    subscription = authSubscription;
 
     return () => {
       isMounted = false;
-      subscription.unsubscribe();
+      if (subscription) {
+        subscription.unsubscribe();
+      }
     };
   }, []);
 

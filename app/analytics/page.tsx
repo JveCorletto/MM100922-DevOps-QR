@@ -21,18 +21,17 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+
   useEffect(() => {
     const client = supabaseBrowser();
     setSupabase(client);
   }, []);
 
-  if (!supabase) {
-    return null;
-  }
-
   useEffect(() => {
+    if (!supabase) return;
+
     loadAnalytics()
-  }, [])
+  }, [supabase])
 
   async function loadAnalytics() {
     try {
@@ -245,10 +244,10 @@ export default function AnalyticsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${survey.status === 'published'
-                            ? 'bg-green-100 text-green-800'
-                            : survey.status === 'draft'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
+                          ? 'bg-green-100 text-green-800'
+                          : survey.status === 'draft'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
                           }`}>
                           {survey.status === 'published' ? 'Publicada' :
                             survey.status === 'draft' ? 'Borrador' :

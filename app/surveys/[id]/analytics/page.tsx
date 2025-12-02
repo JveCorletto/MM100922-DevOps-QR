@@ -11,20 +11,21 @@ import { ExportButton } from '@/components/analytics/ExportButton';
 import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 export default function SurveyAnalyticsPage() {
+  const { id } = useParams();
+  const router = useRouter();
+  const { data, loading, error, refetch } = useSurveyAnalytics(id as string);
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
+  
   const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
   useEffect(() => {
     const client = supabaseBrowser();
     setSupabase(client);
   }, []);
 
+  // Ahora sí verificar
   if (!supabase) {
     return null;
   }
-  
-  const { id } = useParams();
-  const router = useRouter();
-  const { data, loading, error, refetch } = useSurveyAnalytics(id as string);
-  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
   // Verificar autenticación en cliente
   useEffect(() => {

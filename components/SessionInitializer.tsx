@@ -5,22 +5,18 @@ import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrows
 
 export default function SessionInitializer() {
   const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+
   useEffect(() => {
     const client = supabaseBrowser();
     setSupabase(client);
   }, []);
 
-  if (!supabase) {
-    return null;
-  }
-
   useEffect(() => {
+    if (!supabase) return;
+    
     // Función para inicializar la sesión
     const initializeSession = async () => {
       try {
-        const supabase = supabaseBrowser();
-        
-        // Intentar restaurar sesión desde localStorage
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
@@ -31,7 +27,6 @@ export default function SessionInitializer() {
       }
     };
 
-    // También manejar cambios en localStorage (para sincronizar entre pestañas)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key?.includes('supabase.auth.token')) {
         initializeSession();
@@ -44,7 +39,7 @@ export default function SessionInitializer() {
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, []);
+  }, [supabase]);
 
-  return null; // Este componente no renderiza nada
+  return null;
 }
