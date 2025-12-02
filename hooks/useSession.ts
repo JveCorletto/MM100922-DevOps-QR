@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient"; // Usar el cliente unificado
-import type { Session } from "@supabase/supabase-js";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 interface SessionUser {
   id: string;
@@ -10,95 +10,101 @@ interface SessionUser {
   name: string;
 }
 
-export function useSession() {
+interface UseSessionResult {
+  user: SessionUser | null;
+  loading: boolean;
+}
+
+export function useSession(): UseSessionResult {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const client: SupabaseBrowserClient | null = supabaseBrowser();
+
+    // Si estamos en SSR/build, no hay cliente → dejamos loading en false
+    if (!client) {
+      setLoading(false);
+      return;
+    }
+
     let isMounted = true;
 
-    const getSession = async () => {
-      try {
-        if (!isMounted) return;
+    async function fetchInitialUser() {
+      const {
+        data: { user },
+      } = await client.auth.getUser();
 
-        // Usar el cliente singleton
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Session error:", error);
-          if (isMounted) {
-            setUser(null);
-            setLoading(false);
-          }
-          return;
+      if (!isMounted) return;
+
+      if (!user) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      // Nombre por defecto desde metadata/perfil
+      let userName =
+        (user.user_metadata as any)?.display_name ??
+        (user.user_metadata as any)?.full_name ??
+        (user.user_metadata as any)?.name ??
+        user.email ??
+        "Usuario";
+
+      try {
+        const { data: profile } = await client
+          .from("profiles")
+          .select("display_name")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (profile?.display_name) {
+          userName = profile.display_name;
         }
+      } catch (err) {
+        console.warn("Could not fetch profile:", err);
+      }
+
+      setUser({
+        id: user.id,
+        email: user.email,
+        name: userName,
+      });
+      setLoading(false);
+    }
+
+    fetchInitialUser();
+
+    const {
+      data: { subscription },
+    } = client.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
+        if (!isMounted) return;
 
         if (!session?.user) {
-          if (isMounted) {
-            setUser(null);
-            setLoading(false);
-          }
-          return;
-        }
-
-        // Obtener nombre del usuario
-        let userName = session.user.email?.split('@')[0] || "Usuario";
-        
-        try {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("display_name")
-            .eq("id", session.user.id)
-            .single();
-            
-          if (profile?.display_name) {
-            userName = profile.display_name;
-          }
-        } catch (profileError) {
-          console.warn("Could not fetch profile:", profileError);
-        }
-
-        if (isMounted) {
-          setUser({
-            id: session.user.id,
-            email: session.user.email,
-            name: userName,
-          });
-          setLoading(false);
-        }
-
-      } catch (error) {
-        console.error("Failed to get session:", error);
-        if (isMounted) {
-          setUser(null);
-          setLoading(false);
-        }
-      }
-    };
-
-    getSession();
-
-    // Suscribirse a cambios usando el mismo cliente
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (!isMounted) return;
-        
-        if (event === "SIGNED_OUT" || !session) {
           setUser(null);
           setLoading(false);
           return;
         }
 
-        // Actualizar usuario cuando cambie la sesión
-        const userName = session.user.email?.split('@')[0] || "Usuario";
+        const sessionUser = session.user;
+        const meta: any = sessionUser.user_metadata ?? {};
+        const userName =
+          meta.display_name ??
+          meta.full_name ??
+          meta.name ??
+          sessionUser.email ??
+          "Usuario";
+
         setUser({
-          id: session.user.id,
-          email: session.user.email,
+          id: sessionUser.id,
+          email: sessionUser.email,
           name: userName,
         });
         setLoading(false);
       }
     );
+
 
     return () => {
       isMounted = false;

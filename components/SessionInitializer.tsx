@@ -1,9 +1,19 @@
 "use client";
 
-import { useEffect } from "react";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { useEffect, useState } from 'react';
+import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 export default function SessionInitializer() {
+  const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+  useEffect(() => {
+    const client = supabaseBrowser();
+    setSupabase(client);
+  }, []);
+
+  if (!supabase) {
+    return null;
+  }
+
   useEffect(() => {
     // Función para inicializar la sesión
     const initializeSession = async () => {

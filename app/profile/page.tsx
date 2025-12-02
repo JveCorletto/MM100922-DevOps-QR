@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import toast from "react-hot-toast";
+import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 type Profile = {
   display_name: string | null;
@@ -11,7 +11,16 @@ type Profile = {
 };
 
 export default function ProfilePage() {
-  const supabase = supabaseBrowser();
+  const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+  useEffect(() => {
+    const client = supabaseBrowser();
+    setSupabase(client);
+  }, []);
+
+  if (!supabase) {
+    return null;
+  }
+  
   const [email, setEmail] = useState<string>("");
   const [profile, setProfile] = useState<Profile>({
     display_name: "",

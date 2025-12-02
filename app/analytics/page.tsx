@@ -1,9 +1,9 @@
 'use client'
 
-import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 interface Survey {
   id: string
@@ -20,6 +20,15 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+  useEffect(() => {
+    const client = supabaseBrowser();
+    setSupabase(client);
+  }, []);
+
+  if (!supabase) {
+    return null;
+  }
 
   useEffect(() => {
     loadAnalytics()

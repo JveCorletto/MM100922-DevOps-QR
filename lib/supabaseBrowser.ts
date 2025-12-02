@@ -1,2 +1,10 @@
-export { createSupabaseBrowserClient as supabaseBrowser } from "./supabaseClient";
-export { supabase } from "./supabaseClient";
+import {
+  createSupabaseBrowserClient,
+  type SupabaseBrowserClient,
+} from "./supabaseClient";
+
+export function supabaseBrowser(): SupabaseBrowserClient | null {
+  return createSupabaseBrowserClient();
+}
+
+export type { SupabaseBrowserClient };

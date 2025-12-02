@@ -2,12 +2,22 @@
 
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient"; // Usar el cliente unificado
+import { useEffect, useState } from 'react';
 import { useSession } from "@/hooks/useSession";
+import { usePathname, useRouter } from "next/navigation";
+import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 export default function NavBar() {
+  const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+  useEffect(() => {
+    const client = supabaseBrowser();
+    setSupabase(client);
+  }, []);
+
+  if (!supabase) {
+    return null;
+  }
+
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);

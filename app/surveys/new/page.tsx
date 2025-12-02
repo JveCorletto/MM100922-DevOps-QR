@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 type SurveyForm = { title: string; description?: string; };
 
@@ -11,7 +11,15 @@ export default function NewSurveyPage() {
   const { register, handleSubmit, reset } = useForm<SurveyForm>();
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = supabaseBrowser();
+  const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+  useEffect(() => {
+    const client = supabaseBrowser();
+    setSupabase(client);
+  }, []);
+
+  if (!supabase) {
+    return null;
+  }
 
   // Guard: requiere sesión
   useEffect(() => {

@@ -1,10 +1,20 @@
 "use client";
-import { useState } from "react";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import toast from "react-hot-toast";
+import { useEffect, useState } from 'react';
+import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 export default function UpdatePasswordPage() {
-  const supabase = supabaseBrowser();
+  const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+  
+  useEffect(() => {
+    const client = supabaseBrowser();
+    setSupabase(client);
+  }, []);
+
+  if (!supabase) {
+    return null;
+  }
+
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
   const [loading, setLoading] = useState(false);

@@ -4,8 +4,9 @@ import { createBrowserClient } from "@supabase/ssr";
 let browserClient: ReturnType<typeof createBrowserClient> | null = null;
 
 export function createSupabaseBrowserClient() {
+  // En servidor / build devolvemos null y NO lanzamos error
   if (typeof window === "undefined") {
-    throw new Error("Este cliente solo debe usarse en el navegador");
+    return null;
   }
 
   if (browserClient) return browserClient;
@@ -18,12 +19,14 @@ export function createSupabaseBrowserClient() {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: false,
-      }
+      },
     }
   );
 
   return browserClient;
 }
 
-// Exportar por defecto para mantener compatibilidad
-export const supabase = createSupabaseBrowserClient();
+// Tipo útil para el cliente en el navegador
+export type SupabaseBrowserClient = NonNullable<
+  ReturnType<typeof createSupabaseBrowserClient>
+>;

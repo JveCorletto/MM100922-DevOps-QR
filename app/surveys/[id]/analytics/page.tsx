@@ -8,9 +8,19 @@ import { QuestionAnalytics } from '@/components/analytics/QuestionAnalytics';
 import { ResponseTrendChart } from '@/components/analytics/charts/ResponseTrendChart';
 import { DeviceStats } from '@/components/analytics/DeviceStats';
 import { ExportButton } from '@/components/analytics/ExportButton';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 export default function SurveyAnalyticsPage() {
+  const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+  useEffect(() => {
+    const client = supabaseBrowser();
+    setSupabase(client);
+  }, []);
+
+  if (!supabase) {
+    return null;
+  }
+  
   const { id } = useParams();
   const router = useRouter();
   const { data, loading, error, refetch } = useSurveyAnalytics(id as string);

@@ -3,7 +3,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 const COOLDOWN = 60;
 
@@ -19,10 +19,17 @@ type Form = {
 };
 
 export default function RegisterPage() {
-  const supabase = supabaseBrowser();
   const router = useRouter();
+  const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+  useEffect(() => {
+    const client = supabaseBrowser();
+    setSupabase(client);
+  }, []);
 
-  // 🔒 No mostrar si ya hay sesión
+  if (!supabase) {
+    return null;
+  }
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
