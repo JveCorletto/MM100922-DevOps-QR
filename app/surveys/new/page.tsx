@@ -16,18 +16,18 @@ export default function NewSurveyPage() {
     const client = supabaseBrowser();
     setSupabase(client);
   }, []);
-
-  if (!supabase) {
-    return null;
-  }
-
-  // Guard: requiere sesión
+  
   useEffect(() => {
     (async () => {
+      if (!supabase) return; // ← Verificar aquí
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) router.replace("/auth/login");
     })();
   }, [router, supabase]);
+
+  if (!supabase) {
+    return null;
+  }
 
   const onSubmit = async (data: SurveyForm) => {
     if (loading) return;

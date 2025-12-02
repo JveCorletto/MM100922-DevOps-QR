@@ -8,20 +8,21 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 export default function NavBar() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const { user, loading } = useSession();
   const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+
   useEffect(() => {
     const client = supabaseBrowser();
     setSupabase(client);
   }, []);
 
+  // Mover la condición DESPUÉS de todos los hooks
   if (!supabase) {
     return null;
   }
-
-  const router = useRouter();
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const { user, loading } = useSession();
 
   const logout = async () => {
     try {

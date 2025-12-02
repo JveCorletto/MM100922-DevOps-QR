@@ -19,24 +19,10 @@ type Form = {
 };
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
-  useEffect(() => {
-    const client = supabaseBrowser();
-    setSupabase(client);
-  }, []);
-
-  if (!supabase) {
-    return null;
-  }
-
-  useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) router.replace("/surveys");
-    })();
-  }, [router, supabase]);
-
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const [form, setForm] = useState<Form>({
     email: "",
     password: "",
@@ -47,8 +33,20 @@ export default function RegisterPage() {
     genero: "",
     fechaNacimiento: "",
   });
-  const [loading, setLoading] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    const client = supabaseBrowser();
+    setSupabase(client);
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return; // ← CONDICIÓN DENTRO DEL EFECTO
+
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) router.replace("/surveys");
+    })();
+  }, [router, supabase]);
 
   // Restaurar cooldown al recargar
   useEffect(() => {
@@ -61,6 +59,8 @@ export default function RegisterPage() {
     const id = setInterval(() => setCooldown((c) => c - 1), 1000);
     return () => clearInterval(id);
   }, [cooldown]);
+
+  if (!supabase) return null;
 
   const lockCooldown = () => {
     const until = Math.floor(Date.now() / 1000) + COOLDOWN;
