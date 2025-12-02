@@ -1,20 +1,29 @@
 "use client";
 
-import { useEffect } from "react";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { useEffect, useState } from 'react';
+import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 export default function SessionInitializer() {
+  const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
   useEffect(() => {
     const client = supabaseBrowser();
-    if (!client) return;
+    setSupabase(client);
+  }, []);
 
+  if (!supabase) {
+    return null;
+  }
+
+  useEffect(() => {
+    // Función para inicializar la sesión
     const initializeSession = async () => {
       try {
-        const {
-          data: { session },
-        } = await client.auth.getSession();
-
-      if (session) {
+        const supabase = supabaseBrowser();
+        
+        // Intentar restaurar sesión desde localStorage
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
           console.log("Session initialized:", session.user.email);
         }
       } catch (error) {
@@ -22,20 +31,20 @@ export default function SessionInitializer() {
       }
     };
 
+    // También manejar cambios en localStorage (para sincronizar entre pestañas)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key?.includes("supabase.auth.token")) {
+      if (e.key?.includes('supabase.auth.token')) {
         initializeSession();
       }
     };
 
     initializeSession();
-    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener('storage', handleStorageChange);
 
     return () => {
-      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
-  // No renderiza nada
-  return null;
+  return null; // Este componente no renderiza nada
 }
