@@ -15,6 +15,18 @@ interface MultipleChoiceChartProps {
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
 
 export function MultipleChoiceChart({ data, question }: MultipleChoiceChartProps) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-gray-50 rounded-lg p-8 text-center">
+        <div className="text-4xl mb-2">📊</div>
+        <p className="text-gray-600 font-medium">No hay datos disponibles para graficar</p>
+        <p className="text-gray-500 text-sm mt-1">
+          Los datos estadísticos de esta pregunta aún no están disponibles
+        </p>
+      </div>
+    );
+  }
+
   // Ordenar por cantidad descendente
   const sortedData = [...data].sort((a, b) => b.count - a.count);
 
@@ -53,25 +65,25 @@ export function MultipleChoiceChart({ data, question }: MultipleChoiceChartProps
             margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-            <XAxis 
-              type="number" 
-              label={{ 
-                value: 'Número de selecciones', 
-                position: 'insideBottom', 
-                offset: -10 
+            <XAxis
+              type="number"
+              label={{
+                value: 'Número de selecciones',
+                position: 'insideBottom',
+                offset: -10
               }}
             />
-            <YAxis 
-              type="category" 
-              dataKey="option" 
+            <YAxis
+              type="category"
+              dataKey="option"
               width={80}
               tick={{ fontSize: 12 }}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Bar 
-              dataKey="count" 
-              name="Selecciones" 
+            <Bar
+              dataKey="count"
+              name="Selecciones"
               radius={[0, 4, 4, 0]}
             >
               {sortedData.map((entry, index) => (
@@ -81,7 +93,7 @@ export function MultipleChoiceChart({ data, question }: MultipleChoiceChartProps
           </BarChart>
         </ResponsiveContainer>
       </div>
-      
+
       {/* Tabla de datos */}
       <div className="mt-6">
         <div className="overflow-x-auto">

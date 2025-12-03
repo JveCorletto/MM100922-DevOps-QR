@@ -6,42 +6,68 @@ import { useSurveyAnalytics } from '@/hooks/useSurveyAnalytics';
 import { StatsCards } from '@/components/analytics/StatsCards';
 import { QuestionAnalytics } from '@/components/analytics/QuestionAnalytics';
 import { ResponseTrendChart } from '@/components/analytics/charts/ResponseTrendChart';
-import { DeviceStats } from '@/components/analytics/DeviceStats';
 import { ExportButton } from '@/components/analytics/ExportButton';
-import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 export default function SurveyAnalyticsPage() {
   const { id } = useParams();
   const router = useRouter();
   const { data, loading, error, refetch } = useSurveyAnalytics(id as string);
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
-  
-  const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
-  useEffect(() => {
-    const client = supabaseBrowser();
-    setSupabase(client);
-  }, []);
-
-  // Ahora sí verificar
-  if (!supabase) {
-    return null;
-  }
+  const [isLoading, setIsLoading] = useState(true);
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   // Verificar autenticación en cliente
   useEffect(() => {
     const checkAuth = async () => {
-      const supabase = supabaseBrowser();
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        router.push('/auth/login');
-      } else {
+      try {
+        const supabase = supabaseBrowser();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          setSessionError('Error al verificar sesión');
+          setIsLoading(false);
+          return;
+        }
+        
+        if (!session) {
+          router.push('/auth/login');
+          return;
+        }
+        
         setHasCheckedAuth(true);
+        setIsLoading(false);
+      } catch (err) {
+        setSessionError('Error al verificar autenticación');
+        setIsLoading(false);
       }
     };
     
     checkAuth();
   }, [router]);
+
+  // Si hay error de sesión o auth
+  if (sessionError) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+            <div className="flex items-center mb-4">
+              <div className="text-red-600 text-2xl mr-3">🔒</div>
+              <h2 className="text-xl font-bold text-red-800">Error de autenticación</h2>
+            </div>
+            <p className="text-red-700 mb-4">{sessionError}</p>
+            <button
+              onClick={() => router.push('/auth/login')}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Ir al inicio de sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading || !hasCheckedAuth) {
     return (
@@ -60,6 +86,7 @@ export default function SurveyAnalyticsPage() {
     );
   }
 
+  // Si hay error del hook
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -69,8 +96,12 @@ export default function SurveyAnalyticsPage() {
               <div className="text-red-600 text-2xl mr-3">⚠️</div>
               <h2 className="text-xl font-bold text-red-800">Error al cargar analítica</h2>
             </div>
-            <p className="text-red-700 mb-4">{error}</p>
-            <div className="flex space-x-3">
+            <p className="text-red-700 mb-4">
+              {error.includes('No autorizado') || error.includes('401') 
+                ? 'Tu sesión ha expirado o no tienes permiso para ver esta encuesta.'
+                : error}
+            </p>
+            <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
               <button
                 onClick={() => refetch()}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -83,6 +114,14 @@ export default function SurveyAnalyticsPage() {
               >
                 Volver a encuestas
               </button>
+              {(error.includes('No autorizado') || error.includes('401')) && (
+                <button
+                  onClick={() => router.push('/auth/login')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Iniciar sesión
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -90,7 +129,7 @@ export default function SurveyAnalyticsPage() {
     );
   }
 
-  // Solo renderizar cuando data existe
+  // Si no hay datos (pero no hay error)
   if (!data) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -98,8 +137,27 @@ export default function SurveyAnalyticsPage() {
           <div className="text-5xl mb-4">📊</div>
           <h2 className="text-2xl font-bold mb-4">Sin datos disponibles</h2>
           <p className="text-gray-600 mb-6">
-            Esta encuesta aún no tiene respuestas. Comparte el enlace para comenzar a recibir respuestas.
+            No se pudieron cargar los datos de la encuesta. Esto puede deberse a:
           </p>
+          <ul className="text-left text-gray-600 mb-6 max-w-md mx-auto">
+            <li className="mb-2">• La encuesta no existe</li>
+            <li className="mb-2">• No tienes permisos para ver esta encuesta</li>
+            <li className="mb-2">• Problemas de conexión con el servidor</li>
+          </ul>
+          <div className="flex justify-center space-x-3">
+            <button
+              onClick={() => refetch()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Reintentar
+            </button>
+            <button
+              onClick={() => router.push('/surveys')}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              Volver a encuestas
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -140,15 +198,8 @@ export default function SurveyAnalyticsPage() {
       {/* Gráfico de tendencia */}
       {summary.response_trend && summary.response_trend.length > 0 && (
         <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-bold mb-4">Tendencia de respuestas (últimos 7 días)</h2>
+          <h2 className="text-xl font-bold mb-4">Tendencia de respuestas</h2>
           <ResponseTrendChart data={summary.response_trend} />
-        </div>
-      )}
-
-      {/* Estadísticas de dispositivo */}
-      {summary.device_stats && (
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <DeviceStats stats={summary.device_stats} />
         </div>
       )}
 

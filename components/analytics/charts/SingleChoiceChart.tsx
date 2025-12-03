@@ -15,9 +15,21 @@ interface SingleChoiceChartProps {
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
 export function SingleChoiceChart({ data, question }: SingleChoiceChartProps) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-gray-50 rounded-lg p-8 text-center">
+        <div className="text-4xl mb-2">📊</div>
+        <p className="text-gray-600 font-medium">No hay datos disponibles para graficar</p>
+        <p className="text-gray-500 text-sm mt-1">
+          Los datos estadísticos de esta pregunta aún no están disponibles
+        </p>
+      </div>
+    );
+  }
+
   // Ordenar por cantidad descendente
   const sortedData = [...data].sort((a, b) => b.count - a.count);
-
+  
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
