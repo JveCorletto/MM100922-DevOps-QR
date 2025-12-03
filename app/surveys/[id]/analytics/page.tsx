@@ -7,30 +7,29 @@ import { StatsCards } from '@/components/analytics/StatsCards';
 import { QuestionAnalytics } from '@/components/analytics/QuestionAnalytics';
 import { ResponseTrendChart } from '@/components/analytics/charts/ResponseTrendChart';
 import { ExportButton } from '@/components/analytics/ExportButton';
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { supabaseBrowser, type SupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 export default function SurveyAnalyticsPage() {
   const { id } = useParams();
   const router = useRouter();
   const { data, loading, error, refetch } = useSurveyAnalytics(id as string);
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
-  
+  const [isLoading, setIsLoading] = useState(true);
+  const [sessionError, setSessionError] = useState<string | null>(null);
   const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+
+  // Inicializar Supabase cliente - esto debe ir PRIMERO
   useEffect(() => {
     const client = supabaseBrowser();
     setSupabase(client);
   }, []);
 
-  // Ahora sí verificar
-  if (!supabase) {
-    return null;
-  }
-
   // Verificar autenticación en cliente
   useEffect(() => {
     const checkAuth = async () => {
+      if (!supabase) return; // Esperar a que supabase esté inicializado
+      
       try {
-        const supabase = supabaseBrowser();
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
@@ -52,8 +51,26 @@ export default function SurveyAnalyticsPage() {
       }
     };
     
-    checkAuth();
-  }, [router]);
+    if (supabase) {
+      checkAuth();
+    }
+  }, [router, supabase]); // Dependencia en supabase
+
+  // Si supabase aún no está inicializado, mostrar loading
+  if (!supabase) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Si hay error de sesión o auth
   if (sessionError) {
@@ -78,7 +95,7 @@ export default function SurveyAnalyticsPage() {
     );
   }
 
-  if (loading || !hasCheckedAuth) {
+  if (loading || !hasCheckedAuth || isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="animate-pulse space-y-6">
