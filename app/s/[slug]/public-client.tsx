@@ -4,6 +4,8 @@ import toast from "react-hot-toast";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getFingerprint } from "@/utils/fingerprint";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import type { Session, AuthChangeEvent } from "@supabase/supabase-js";
 
 type QOption = { label: string; value?: string };
 type Question = {
@@ -14,8 +16,16 @@ type Question = {
     options: QOption[];
 };
 
+type ErrorResponse = {
+    error?: string;
+    message?: string;
+    details?: any;
+    [key: string]: any;
+};
+
 export default function PublicSurvey({ slug }: { slug: string }) {
     const router = useRouter();
+    const [supabase] = useState(() => supabaseBrowser());
 
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -32,6 +42,47 @@ export default function PublicSurvey({ slug }: { slug: string }) {
     // identificadores anónimos
     const [token, setToken] = useState<string>("");
     const [fp, setFp] = useState<string>("");
+    const [authToken, setAuthToken] = useState<string | null>(null);
+
+    // Obtener token de autenticación si existe
+    useEffect(() => {
+        const getAuthSession = async () => {
+            try {
+                if (!supabase) {
+                    return;
+                }
+                
+                const { data: { session }, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    return;
+                }
+                
+                if (session?.access_token) {
+                    setAuthToken(session.access_token);
+                }
+            } catch (error) { }
+        };
+        
+        getAuthSession();
+        
+        // Escuchar cambios en la autenticación si supabase existe
+        if (supabase) {
+            const { data: { subscription } } = supabase.auth.onAuthStateChange(
+                (event: AuthChangeEvent, session: Session | null) => {
+                    if (session?.access_token) {
+                        setAuthToken(session.access_token);
+                    } else {
+                        setAuthToken(null);
+                    }
+                }
+            );
+            
+            return () => {
+                subscription.unsubscribe();
+            };
+        }
+    }, [supabase]);
 
     // Asegura token + fingerprint locales
     useEffect(() => {
@@ -44,7 +95,8 @@ export default function PublicSurvey({ slug }: { slug: string }) {
                 }
                 setToken(t);
             } catch {
-                setToken(Math.random().toString(36).slice(2));
+                const fallbackToken = Math.random().toString(36).slice(2);
+                setToken(fallbackToken);
             }
 
             try {
@@ -65,31 +117,35 @@ export default function PublicSurvey({ slug }: { slug: string }) {
         (async () => {
             if (!token && scope === "device") return; // espera token
             setLoading(true);
+            
+            try {
+                // Preguntas
+                const r1 = await fetch(`/api/public/s/${slug}`);
+                if (!r1.ok) {
+                    setLoading(false);
+                    toast.error("No se pudo cargar la encuesta");
+                    return;
+                }
+                const j1 = await r1.json();
+                setQuestions(j1.questions as Question[]);
 
-            // Preguntas
-            const r1 = await fetch(`/api/public/s/${slug}`);
-            if (!r1.ok) {
+                // Estado (singleResponse / alreadyResponded)
+                const params = new URLSearchParams();
+                if (token) params.set("token", token);
+                if (fp) params.set("fp", fp);
+
+                const r2 = await fetch(`/api/public/s/${slug}/my-status?${params.toString()}`);
+                const j2 = await r2.json();
+
+                setSingleResponse(Boolean(j2.singleResponse));
+                setScope((j2.scope as "device" | "user") ?? "device");
+                setAlreadyResponded(Boolean(j2.alreadyResponded));
+                setRequiresLogin(Boolean(j2.requiresLogin));
+            } catch (error) {
+                toast.error("Error al cargar la encuesta");
+            } finally {
                 setLoading(false);
-                toast.error("No se pudo cargar la encuesta");
-                return;
             }
-            const j1 = await r1.json();
-            setQuestions(j1.questions as Question[]);
-
-            // Estado (singleResponse / alreadyResponded)
-            const params = new URLSearchParams();
-            if (token) params.set("token", token);
-            if (fp) params.set("fp", fp);
-
-            const r2 = await fetch(`/api/public/s/${slug}/my-status?${params.toString()}`);
-            const j2 = await r2.json();
-
-            setSingleResponse(Boolean(j2.singleResponse));
-            setScope((j2.scope as "device" | "user") ?? "device");
-            setAlreadyResponded(Boolean(j2.alreadyResponded));
-            setRequiresLogin(Boolean(j2.requiresLogin));
-
-            setLoading(false);
         })();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [slug, token, fp]);
@@ -141,33 +197,56 @@ export default function PublicSurvey({ slug }: { slug: string }) {
             })),
         };
 
-        const r = await fetch(`/api/public/s/${slug}/responses`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        });
+        try {
+            // Preparar headers
+            const headers: HeadersInit = {
+                "Content-Type": "application/json",
+            };
 
-        if (!r.ok) {
-            const j = await r.json().catch(() => ({}));
-            if (j?.error === "already_answered") {
+            // Si hay token de autenticación, agregarlo
+            if (authToken) {
+                headers["Authorization"] = `Bearer ${authToken}`;
+            }
+
+            const r = await fetch(`/api/public/s/${slug}/responses`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify(payload),
+            });
+            
+            if (!r.ok) {
+                let errorData: ErrorResponse = {};
+                try {
+                    errorData = await r.json() as ErrorResponse;
+                } catch (parseError) { }
+                
+                if (errorData.error === "already_answered") {
+                    setSubmitting(false);
+                    router.push(`/s/${slug}/thanks?already=1`);
+                    return;
+                }
+                if (errorData.error === "login_required") {
+                    setSubmitting(false);
+                    router.push(`/auth/login?redirect=/s/${slug}`);
+                    return;
+                }
+                toast.error(errorData.message || errorData.error || "No se pudo enviar la respuesta");
                 setSubmitting(false);
-                router.push(`/s/${slug}/thanks?already=1`);
                 return;
             }
-            if (j?.error === "login_required") {
-                setSubmitting(false);
-                router.push(`/auth/login?redirect=/s/${slug}`);
-                return;
-            }
-            toast.error(j.error || "No se pudo enviar la respuesta");
+
+            const responseData = await r.json();
+            router.push(`/s/${slug}/thanks`);
+            
+        } catch (error) {
+            toast.error("Error de conexión. Intenta nuevamente.");
             setSubmitting(false);
-            return;
         }
-
-        router.push(`/s/${slug}/thanks`);
     };
 
-    if (loading) return <div className="card"><p>Cargando…</p></div>;
+    if (loading) {
+        return <div className="card"><p>Cargando…</p></div>;
+    }
 
     // Bloqueo visual cuando ya respondió y es única respuesta
     if (singleResponse && alreadyResponded) {
@@ -208,6 +287,7 @@ export default function PublicSurvey({ slug }: { slug: string }) {
                                 value={answers[q.id] ?? ""}
                                 onChange={(e) => setValue(q.id, e.target.value)}
                                 style={{ width: "100%" }}
+                                placeholder="Escribe tu respuesta aquí..."
                             />
                         )}
 
@@ -290,7 +370,9 @@ export default function PublicSurvey({ slug }: { slug: string }) {
                 <button
                     className="btn danger"
                     type="reset"
-                    onClick={() => setAnswers({})}
+                    onClick={() => {
+                        setAnswers({});
+                    }}
                     disabled={submitting}
                 >
                     Limpiar
