@@ -11,29 +11,60 @@ interface QuestionAnalyticsProps {
 }
 
 export function QuestionAnalytics({ question, index }: QuestionAnalyticsProps) {
+  // Verificar si hay datos para gráficos
+  const hasChartData = question.analytics?.chart_data?.length > 0;
+  
   const renderChart = () => {
+    // Si no hay datos de gráficos pero sí respuestas
+    if (!hasChartData && question.response_count > 0) {
+      return (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+          <div className="text-4xl mb-2">📊</div>
+          <p className="text-yellow-800 font-medium mb-2">
+            Datos de gráfico no disponibles temporalmente
+          </p>
+          <p className="text-yellow-600 text-sm">
+            Esta pregunta tiene {question.response_count} respuestas, pero los datos 
+            estadísticos aún se están procesando.
+          </p>
+          <div className="mt-4 flex justify-center space-x-4">
+            <div className="px-3 py-1 bg-yellow-100 rounded-lg">
+              <span className="text-yellow-800 font-medium">{question.response_count}</span>
+              <span className="text-yellow-600 ml-1">respuestas</span>
+            </div>
+            <div className="px-3 py-1 bg-blue-100 rounded-lg">
+              <span className="text-blue-800 font-medium">
+                {question.required ? 'Obligatoria' : 'Opcional'}
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Si hay datos de gráficos
     switch (question.type) {
       case 'single':
-        return (
+        return hasChartData ? (
           <SingleChoiceChart
             data={question.analytics.chart_data}
             question={question.question_text}
           />
-        );
+        ) : null;
       case 'multiple':
-        return (
+        return hasChartData ? (
           <MultipleChoiceChart
             data={question.analytics.chart_data}
             question={question.question_text}
           />
-        );
+        ) : null;
       case 'likert':
-        return (
+        return hasChartData ? (
           <LikertChart
             data={question.analytics.chart_data}
             question={question.question_text}
           />
-        );
+        ) : null;
       case 'text':
         return (
           <TextResponses
@@ -70,7 +101,7 @@ export function QuestionAnalytics({ question, index }: QuestionAnalyticsProps) {
             )}
           </div>
         </div>
-        {question.analytics.most_selected && (
+        {question.analytics?.most_selected && (
           <div className="text-right">
             <p className="text-sm text-gray-500">Más seleccionado</p>
             <p className="font-semibold">
@@ -94,29 +125,33 @@ export function QuestionAnalytics({ question, index }: QuestionAnalyticsProps) {
           <div>
             <p className="text-gray-500">Tasa de respuesta</p>
             <p className="font-medium">
-              {question.response_count > 0
-                ? `${Math.round((question.response_count / question.response_count) * 100)}%`
-                : '0%'}
+              {question.response_count > 0 ? '100%' : '0%'}
             </p>
           </div>
-          {question.type === 'likert' && (
+          {question.type === 'likert' && question.analytics && (
             <>
               <div>
                 <p className="text-gray-500">Puntuación promedio</p>
-                <p className="font-medium">{question.analytics.average_rating}</p>
+                <p className="font-medium">{question.analytics.average_rating || 'N/A'}</p>
               </div>
               <div>
                 <p className="text-gray-500">Mediana</p>
-                <p className="font-medium">{question.analytics.median_rating}</p>
+                <p className="font-medium">{question.analytics.median_rating || 'N/A'}</p>
               </div>
             </>
           )}
-          {question.type === 'multiple' && (
+          {question.type === 'multiple' && question.analytics && (
             <div>
               <p className="text-gray-500">Selecciones por respuesta</p>
               <p className="font-medium">
-                {question.analytics.avg_selections_per_response}
+                {question.analytics.avg_selections_per_response || 'N/A'}
               </p>
+            </div>
+          )}
+          {question.type === 'single' && !hasChartData && question.response_count > 0 && (
+            <div>
+              <p className="text-gray-500">Datos disponibles</p>
+              <p className="font-medium text-yellow-600">Procesando...</p>
             </div>
           )}
         </div>
