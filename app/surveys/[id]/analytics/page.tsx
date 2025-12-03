@@ -14,8 +14,17 @@ export default function SurveyAnalyticsPage() {
   const router = useRouter();
   const { data, loading, error, refetch } = useSurveyAnalytics(id as string);
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [sessionError, setSessionError] = useState<string | null>(null);
+  
+  const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null);
+  useEffect(() => {
+    const client = supabaseBrowser();
+    setSupabase(client);
+  }, []);
+
+  // Ahora sí verificar
+  if (!supabase) {
+    return null;
+  }
 
   // Verificar autenticación en cliente
   useEffect(() => {
